@@ -13,7 +13,7 @@ import java.net.Socket;
  */
 public class SimpleTcpClient {
     // Remote host where the server will be running
-    private static final String HOST = "localhost";
+    private static final String HOST = "datakomm.work";
     // TCP port
     private static final int PORT = 1301;
 
