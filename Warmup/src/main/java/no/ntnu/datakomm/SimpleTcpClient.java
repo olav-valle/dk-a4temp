@@ -1,13 +1,5 @@
 package no.ntnu.datakomm;
 
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
-
 /**
  * A Simple TCP client, used as a warm-up exercise for assignment A4.
  */
@@ -16,8 +8,6 @@ public class SimpleTcpClient {
     private static final String HOST = "datakomm.work";
     // TCP port
     private static final int PORT = 1301;
-
-    private Socket socket;
 
     /**
      * Run the TCP Client.
@@ -100,13 +90,7 @@ public class SimpleTcpClient {
      */
     private boolean closeConnection() {
         // TODO - implement this method
-        try {
-            socket.close();
-            return true;
-        } catch (IOException e){
-            log("Exception: " + e.getMessage());
-            return false;
-        }
+        return false;
     }
 
     /**
@@ -118,16 +102,8 @@ public class SimpleTcpClient {
      */
     private boolean connectToServer(String host, int port) {
         // TODO - implement this method
-        log("Attempting connection to host: " + host + " on port: " + port );
-        try {
-            socket = new Socket(host, port);
-            return true;
-        } catch (IOException e) {
-            log("Exception: " + e.getMessage());
-            return false;
-        }
-
         // Remember to catch all possible exceptions that the Socket class can throw.
+        return false;
     }
 
     /**
@@ -138,27 +114,12 @@ public class SimpleTcpClient {
      */
     private boolean sendRequestToServer(String request) {
         // TODO - implement this method
-        if (request != null && !(request.length() == 0) ) {// check string existence
-
-            try {
-                PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
-                writer.println(request);
-                return true;
-            } catch (IOException e) {
-                log("Message send exception: " + e.getMessage());
-                return false;
-            }
-        } else { // string was invalid format or null
-            log("Request string had invalid format (probably empty or was null.");
-            return false;
-        }
-
         // Hint: What can go wrong? Several things:
         // * Connection closed by remote host (server shutdown)
         // * Internet connection lost, timeout in transmission
         // * Connection not opened.
         // * What is the request is null or empty?
-
+        return false;
     }
 
     /**
@@ -169,16 +130,8 @@ public class SimpleTcpClient {
      */
     private String readResponseFromServer() {
         // TODO - implement this method
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            String response = reader.readLine();
-            log("Received response: " + response);
-            return response;
-        } catch (IOException e) {
-            log("Response exception: " + e.getMessage());
-            return null;
-        }
         // Similarly to other methods, exception can happen while trying to read the input stream of the TCP Socket
+        return null;
     }
 
     /**
