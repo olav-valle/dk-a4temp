@@ -76,7 +76,7 @@ public class TCPClient {
      * @return true on success, false otherwise
      */
     private boolean sendCommand(String cmd) {
-        // TODO Step 2: Implement this method
+
         // Hint: Remember to check if connection is active
         return false;
     }
@@ -91,6 +91,7 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
+
         return false;
     }
 
