@@ -26,7 +26,15 @@ public class TCPClient {
         // TODO Step 1: implement this method
         // Hint: Remember to process all exceptions and return false on error
         // Hint: Remember to set up all the necessary input/output stream variables
-        return false;
+        boolean connectedSuccessful = false;
+        try {
+            connection = new Socket(host,port);
+            connectedSuccessful = true;
+        }
+        catch (Exception e){
+            //TODO: Don't be lazy!!
+        }
+        return connectedSuccessful;
     }
 
     /**
