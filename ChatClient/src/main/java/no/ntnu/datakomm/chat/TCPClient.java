@@ -10,6 +10,7 @@ public class TCPClient {
     private BufferedReader fromServer;
     private Socket connection;
 
+
     // Hint: if you want to store a message for the last error, store it here
     private String lastError = null;
 
@@ -26,9 +27,27 @@ public class TCPClient {
         // TODO Step 1: implement this method
         // Hint: Remember to process all exceptions and return false on error
         // Hint: Remember to set up all the necessary input/output stream variables
-        return false;
+        try {
+            this.connection = new Socket("datakomm.work", 1300);
+            InputStream in = this.connection.getInputStream();
+            OutputStream out = this.connection.getOutputStream();
+            this.toServer = new PrintWriter(out, true);
+            this.fromServer = new BufferedReader(new InputStreamReader(in));
+            return true;
+        } catch (UnknownHostException var5) {
+            this.lastError = "Unknown host";
+            System.err.println(this.lastError);
+            return false;
+        } catch (ConnectException var6) {
+            this.lastError = "No chat server listening on given port";
+            System.err.println(this.lastError);
+            return false;
+        } catch (IOException var7) {
+            this.lastError = "I/O error for the socket";
+            System.err.println(this.lastError);
+            return false;
+        }
     }
-
     /**
      * Close the socket. This method must be synchronized, because several
      * threads may try to call it. For example: When "Disconnect" button is
