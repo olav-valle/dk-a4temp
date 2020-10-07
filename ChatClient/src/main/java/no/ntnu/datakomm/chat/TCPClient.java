@@ -29,10 +29,20 @@ public class TCPClient {
         boolean connectedSuccessful = false;
         try {
             connection = new Socket(host,port);
+            connection.setKeepAlive(true);
+            toServer = new PrintWriter(connection.getOutputStream(),true);
+            fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+
+            //toServer.println("sync\n");
+            //System.out.println(fromServer.readLine());
+
             connectedSuccessful = true;
         }
-        catch (Exception e){
+        catch (IOException e){
             //TODO: Don't be lazy!!
+            System.out.println("Failed to connect to server: " + host + ":" + port);
+            e.printStackTrace();
+            connectedSuccessful = false;
         }
         return connectedSuccessful;
     }
@@ -49,6 +59,21 @@ public class TCPClient {
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
         // Hint: remember to check if connection is active
+        if (connection != null && connection.isConnected()){
+            try {
+                connection.close();
+                connection = null;
+
+                //redundant?
+                fromServer = null;
+                toServer = null;
+
+                System.out.println("Disconnected");
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -67,7 +92,13 @@ public class TCPClient {
     private boolean sendCommand(String cmd) {
         // TODO Step 2: Implement this method
         // Hint: Remember to check if connection is active
-        return false;
+        boolean success = false;
+
+        if(connection.isConnected()){
+            toServer.println(cmd);
+        }
+
+        return success;
     }
 
     /**
@@ -80,7 +111,21 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        return false;
+        boolean success = false;
+        String serverResponse = null;
+
+        try {
+            sendCommand("msg " + message +"\n");
+            serverResponse = fromServer.readLine();
+            System.out.println(serverResponse);
+            if (serverResponse.equals("msgok")){
+                success = true;
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        return success;
     }
 
     /**
@@ -91,6 +136,15 @@ public class TCPClient {
     public void tryLogin(String username) {
         // TODO Step 3: implement this method
         // Hint: Reuse sendCommand() method
+        // a space wil brake the command.
+        username = username.trim();
+        if (!username.contains(" ")){
+            String login = "login " + username + "\n";
+            sendCommand(login);
+
+            System.out.println();
+
+        }
     }
 
     /**
@@ -101,6 +155,7 @@ public class TCPClient {
         // TODO Step 5: implement this method
         // Hint: Use Wireshark and the provided chat client reference app to find out what commands the
         // client and server exchange for user listing.
+
     }
 
     /**
@@ -124,6 +179,15 @@ public class TCPClient {
     public void askSupportedCommands() {
         // TODO Step 8: Implement this method
         // Hint: Reuse sendCommand() method
+        sendCommand("help \n");
+        try {
+            String res = fromServer.readLine();
+            System.out.println(res);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+
     }
 
 
@@ -137,7 +201,16 @@ public class TCPClient {
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
 
-        return null;
+        String res = null; //response from server.
+        try {
+            res = fromServer.readLine();
+            System.out.println(res);
+        }
+        catch (IOException e){
+            this.disconnect();
+            e.printStackTrace();
+        }
+        return res;
     }
 
     /**
@@ -176,6 +249,17 @@ public class TCPClient {
             // and act on it.
             // Hint: In Step 3 you need to handle only login-related responses.
             // Hint: In Step 3 reuse onLoginResult() method
+            String res = waitServerResponse();
+            if (res != null){
+                switch (res){
+                    case "loginok":
+                        onLoginResult(true, res);
+                        break;
+                    case "loginerr":
+                        onLoginResult(false, res);
+                }
+            }
+
 
             // TODO Step 5: update this method, handle user-list response from the server
             // Hint: In Step 5 reuse onUserList() method
