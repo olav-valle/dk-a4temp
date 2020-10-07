@@ -41,6 +41,24 @@ public class TCPClient {
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
         // Hint: remember to check if connection is active
+        if (this.connection != null) {
+            System.out.println("Disconnecting...");
+
+            try {
+                this.toServer.close();
+                this.fromServer.close();
+                this.connection.close();
+            } catch (IOException var2) {
+                System.out.println("Error while closing connection: " + var2.getMessage());
+                this.lastError = var2.getMessage();
+                this.connection = null;
+            }
+        } else {
+            System.out.println("No connection to close");
+        }
+
+        System.out.println("Disconnected");
+        this.connection = null;
     }
 
     /**
