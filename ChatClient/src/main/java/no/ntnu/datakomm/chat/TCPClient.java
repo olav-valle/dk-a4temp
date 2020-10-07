@@ -33,9 +33,6 @@ public class TCPClient {
             toServer = new PrintWriter(connection.getOutputStream(),true);
             fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 
-            //toServer.println("sync\n");
-            //System.out.println(fromServer.readLine());
-
             connectedSuccessful = true;
         }
         catch (IOException e){
@@ -94,10 +91,10 @@ public class TCPClient {
         // Hint: Remember to check if connection is active
         boolean success = false;
 
-        if(connection.isConnected()){
+        if(connection != null && connection.isConnected()){
+            System.out.println(cmd);
             toServer.println(cmd);
         }
-
         return success;
     }
 
@@ -111,21 +108,8 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        boolean success = false;
-        String serverResponse = null;
-
-        try {
-            sendCommand("msg " + message +"\n");
-            serverResponse = fromServer.readLine();
-            System.out.println(serverResponse);
-            if (serverResponse.equals("msgok")){
-                success = true;
-            }
-        }
-        catch (Exception e){
-            e.printStackTrace();
-        }
-        return success;
+            sendCommand("msg " + message);
+        return true;
     }
 
     /**
@@ -138,12 +122,10 @@ public class TCPClient {
         // Hint: Reuse sendCommand() method
         // a space wil brake the command.
         username = username.trim();
+        //Todo: is this needed?
         if (!username.contains(" ")){
-            String login = "login " + username + "\n";
-            sendCommand(login);
-
+            sendCommand("login " + username);
             System.out.println();
-
         }
     }
 
@@ -180,14 +162,7 @@ public class TCPClient {
         // TODO Step 8: Implement this method
         // Hint: Reuse sendCommand() method
         sendCommand("help \n");
-        try {
-            String res = fromServer.readLine();
-            System.out.println(res);
-        }
-        catch (IOException e){
-            e.printStackTrace();
-        }
-
+        parseIncomingCommands();
     }
 
 
@@ -249,14 +224,28 @@ public class TCPClient {
             // and act on it.
             // Hint: In Step 3 you need to handle only login-related responses.
             // Hint: In Step 3 reuse onLoginResult() method
+
             String res = waitServerResponse();
+            String serverCode = res.split(" ")[0];
+            //System.out.println(serverCode);
+
             if (res != null){
-                switch (res){
+                switch (serverCode){
                     case "loginok":
                         onLoginResult(true, res);
                         break;
                     case "loginerr":
                         onLoginResult(false, res);
+                        break;
+                    case "msgok":
+                        break;
+                    case "msgerr":
+                        break;
+                    case "supported":
+                        System.out.println(serverCode);
+                        break;
+                    case "":
+                        break;
                 }
             }
 
