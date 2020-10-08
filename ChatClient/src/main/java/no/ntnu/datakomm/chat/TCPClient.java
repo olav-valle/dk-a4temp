@@ -63,8 +63,6 @@ public class TCPClient {
                 this.onDisconnect();
 
                 //redundant?
-                fromServer = null;
-                toServer = null;
 
                 System.out.println("Disconnected");
             }
@@ -79,7 +77,7 @@ public class TCPClient {
      * @return true if the connection is active (opened), false if not.
      */
     public boolean isConnectionActive() {
-        return connection != null;
+        return (connection != null && connection.isConnected());
     }
 
     /**
@@ -96,6 +94,7 @@ public class TCPClient {
         if(connection != null && connection.isConnected()){
             System.out.println("To server: " + cmd);
             toServer.println(cmd);
+            success = true;
         }
         return success;
     }
@@ -110,11 +109,12 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        if (message == null) return false;
-        if (message.length() == 0) return false;
+        //if (message == null) return false;
+        //if (message.length() == 0) return false;
+        if (!isConnectionActive()) return false;
+        if (!connection.isConnected()) return false;
 
-        sendCommand("msg " + message);
-        return true;
+        return sendCommand("msg " + message);
     }
 
     /**
@@ -131,7 +131,7 @@ public class TCPClient {
             sendCommand("login " + username);
         }
         else {
-            onLoginResult(false, "Bad Login");
+            onLoginResult(false, "Bad username.");
         }
     }
 
@@ -163,9 +163,7 @@ public class TCPClient {
         if (message.length() == 0) return false;
 
         String req = "privmsg " + recipient + " " + message;
-
-        sendCommand(req);
-        return true;
+        return sendCommand(req);
     }
 
 
@@ -189,14 +187,15 @@ public class TCPClient {
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
 
-        String res = ""; //response from server.
-        try {
-            res = fromServer.readLine();
-            System.out.println("From server: " + res);
-        }
-        catch (IOException e){
-            this.disconnect();
-            e.printStackTrace();
+        String res = null; //response from server.
+        if (isConnectionActive()) {
+            try {
+                res = fromServer.readLine();
+                System.out.println("From server: " + res);
+            } catch (IOException e) {
+                this.disconnect();
+                e.printStackTrace();
+            }
         }
         return res;
     }
@@ -239,19 +238,16 @@ public class TCPClient {
             // Hint: In Step 3 reuse onLoginResult() method
 
 
-            String[] res; //spilt the server command and server argument.
+            String res = waitServerResponse(); //spilt the server command and server argument.
             String serverCommand = null; // The server Command from the server "loginok", "msgerr" etc..
             String serverArgument = null; // The server Argument.
 
-            try {
-                res = waitServerResponse().split(" ", 2);
-                serverCommand = res[0];
-                if (res.length > 1) serverArgument = res[1].toString();
+            //split the server response to serverCommand and serverArgument.
+            if (res != null){
+                String[] split = res.split(" ", 2);
+                serverCommand = split[0];
+                if (split.length > 1) serverArgument = split[1].toString();
             }
-            catch (NullPointerException e){
-                e.printStackTrace();
-            }
-
 
             if (null != serverCommand){
                 switch (serverCommand){
@@ -267,7 +263,8 @@ public class TCPClient {
                         break;
                     case "msg":
                         if (serverArgument != null) {
-                            onMsgReceived(false, "Anonymous", serverArgument);
+                            String[] serverArgPart = serverArgument.split(" ", 2);
+                            onMsgReceived(false, serverArgPart[0], serverArgPart[1]);
                         }
                         break;
                     case "privmsg":
