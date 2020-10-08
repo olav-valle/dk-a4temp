@@ -69,6 +69,7 @@ public class TCPClient {
                 System.out.println("Disconnected");
             }
             catch (IOException e) {
+                System.out.println("TCPClient disconnect failed");
                 e.printStackTrace();
             }
         }
@@ -109,7 +110,10 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-            sendCommand("msg " + message);
+        if (message == null) return false;
+        if (message.length() == 0) return false;
+
+        sendCommand("msg " + message);
         return true;
     }
 
@@ -125,6 +129,9 @@ public class TCPClient {
         username = username.trim();
         if (!username.contains(" ")){
             sendCommand("login " + username);
+        }
+        else {
+            onLoginResult(false, "Bad Login");
         }
     }
 
@@ -158,7 +165,7 @@ public class TCPClient {
         String req = "privmsg " + recipient + " " + message;
 
         sendCommand(req);
-        return false;
+        return true;
     }
 
 
@@ -182,7 +189,7 @@ public class TCPClient {
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
 
-        String res = null; //response from server.
+        String res = ""; //response from server.
         try {
             res = fromServer.readLine();
             System.out.println("From server: " + res);
@@ -231,45 +238,65 @@ public class TCPClient {
             // Hint: In Step 3 you need to handle only login-related responses.
             // Hint: In Step 3 reuse onLoginResult() method
 
-            String[] res = waitServerResponse().split(" ", 2);
-            String serverCommand = res[0]; // The server Command from the server "loginok", "msgerr" etc..
+
+            String[] res; //spilt the server command and server argument.
+            String serverCommand = null; // The server Command from the server "loginok", "msgerr" etc..
             String serverArgument = null; // The server Argument.
 
-            //System.out.println("serverCommand: " + serverCommand);
-            if (res.length > 1){
-                serverArgument = res[1].toString();
-                //System.out.println("serverArgument: " + serverArgument);
+            try {
+                res = waitServerResponse().split(" ", 2);
+                serverCommand = res[0];
+                if (res.length > 1) serverArgument = res[1].toString();
+            }
+            catch (NullPointerException e){
+                e.printStackTrace();
             }
 
 
             if (null != serverCommand){
                 switch (serverCommand){
                     case "loginok":
-                        onLoginResult(true, serverArgument);
+                        onLoginResult(true, null);
                         break;
                     case "loginerr":
-                        onLoginResult(false, serverArgument);
+                        if (serverArgument != null) {
+                            onLoginResult(false, serverArgument);
+                        }
                         break;
                     case "msgok":
                         break;
                     case "msg":
-                        onMsgReceived(false, "Anonymous", serverArgument);
+                        if (serverArgument != null) {
+                            onMsgReceived(false, "Anonymous", serverArgument);
+                        }
                         break;
                     case "privmsg":
-                        String[] serverArgPart = serverArgument.split(" ", 2);
-                        onMsgReceived(true, serverArgPart[0], serverArgPart[1]);
+                        if (serverArgument != null) {
+                            String[] serverArgPart = serverArgument.split(" ", 2);
+                            onMsgReceived(true, serverArgPart[0], serverArgPart[1]);
+                        }
                         break;
                     case "msgerr":
+                        onMsgError(serverArgument);
                         break;
                     case "supported":
-                        this.onSupported(serverArgument.split(" "));
+                        if (serverArgument != null) {
+                            this.onSupported(serverArgument.split(" "));
+                        }
                         break;
                     case "users":
-                        String[] userList = serverArgument.split(" ");
-                        this.onUsersList(userList);
+                        if (serverArgument != null) {
+                            String[] userList = serverArgument.split(" ");
+                            this.onUsersList(userList);
+                        }
                         break;
                     default:
-                        System.out.println(serverCommand +": " + serverArgument);
+                        if (serverArgument != null) {
+                            System.out.println(serverCommand +": " + serverArgument);
+                        }
+                        else {
+                            System.out.println(serverCommand);
+                        }
                         break;
                 }
             }
