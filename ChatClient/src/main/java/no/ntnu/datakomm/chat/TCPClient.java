@@ -12,6 +12,7 @@ public class TCPClient {
     private BufferedReader fromServer;
     private Socket connection;
 
+
     // Hint: if you want to store a message for the last error, store it here
     private String lastError = null;
 
@@ -22,7 +23,7 @@ public class TCPClient {
      * @param logMesg String to print.
      */
     private void log(String logMesg) {
-        System.out.println("# Log Message: " + logMesg);
+        System.out.println("# Log: " + logMesg);
     }
 
     /**
@@ -41,7 +42,7 @@ public class TCPClient {
 
             return true; // connection and writer/reader creation successful
         } catch (IOException e) {
-            log("Exception: " + e.getMessage());
+            log("Connection Exception: " + e.getMessage());
             return false; // connection failed
         }
         // TODO Step 1: implement this method
@@ -63,13 +64,14 @@ public class TCPClient {
         // TODO Step 4: implement this method
         // TODO onDisconnect
         // Hint: remember to check if connection is active
-        if (connection.isConnected()) {
+        if (connection != null && connection.isConnected()) {
             try {
                 connection.close();
                 connection = null; // really...?
+                onDisconnect(); // Notify listeners of event
                log("Connection closed.");
             } catch (IOException e) {
-                log(e.getMessage());
+                log("Disconnect Exception: " + e.getMessage());
             }
         }
     }
@@ -114,6 +116,7 @@ public class TCPClient {
 
             // TODO catch server error messages
         } else {
+            log("Error sending message. Is connection open?");
             return false;
         }
         // TODO Step 2: implement this method
@@ -128,6 +131,14 @@ public class TCPClient {
      * @param username Username to use
      */
     public void tryLogin(String username) {
+
+        if (isConnectionActive() && !username.contains(" ")) { // check username format is valid
+            sendCommand("login " + username.trim()); // trim to ensure no outside whitespace. Probably not needed?
+        } else if (!isConnectionActive()) {
+            log("No connection active, cannot log in.");
+        } else {
+            log("Could not log in. Username is invalid format.");
+        } // TODO remove logging if unnecessary
         // TODO Step 3: implement this method
         // Hint: Reuse sendCommand() method
     }
@@ -169,14 +180,23 @@ public class TCPClient {
     /**
      * Wait for chat server's response
      *
-     * @return one line of text (one command) received from the server
+     * @return one line of text (one command) received from the server.
      */
     private String waitServerResponse() {
+        String resp = null;
+        if (isConnectionActive()) {
+            try {
+               if (fromServer.ready()) resp = fromServer.readLine();
+            } catch (IOException e) {
+                log("Response Exception: " + e.getMessage());
+                this.disconnect();
+            }
+        }
+
+    return resp;
         // TODO Step 3: Implement this method
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
-
-        return null;
     }
 
     /**
@@ -209,25 +229,62 @@ public class TCPClient {
      */
     private void parseIncomingCommands() {
         while (isConnectionActive()) {
-            // TODO Step 3: Implement this method
-            // Hint: Reuse waitServerResponse() method
-            // Hint: Have a switch-case (or other way) to check what type of response is received from the server
-            // and act on it.
-            // Hint: In Step 3 you need to handle only login-related responses.
-            // Hint: In Step 3 reuse onLoginResult() method
 
-            // TODO Step 5: update this method, handle user-list response from the server
-            // Hint: In Step 5 reuse onUserList() method
+            String response = waitServerResponse();
+            if (response != null) {
+                String[] respSplit = response.split(" ", 2); // split response into command and message parts
+                String command = respSplit[0]; // server response command is first word in response string
+                String message = (respSplit.length > 1) ? respSplit[1] : null; // null if response had no message
 
-            // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
-            // TODO Step 7: add support for incoming message errors (type: msgerr)
-            // TODO Step 7: add support for incoming command errors (type: cmderr)
-            // Hint for Step 7: call corresponding onXXX() methods which will notify all the listeners
+                switch (response) {
+                    case ("loginok"):
+                        onLoginResult(true, message); // message == null here, but signature demands it
+                        break;
+                    case "loginerr":
+                        onLoginResult(false, message);
+                        break;
+                    case "cmderr":
+                        lastError = message;
+                        onCmdError(message);
+                        break;
+                    case "msg":
+                        String[] messageSplit = message.split(" ", 2);
+                        String sender = messageSplit[1]; //first word after command is sender username.
+                        String msg = messageSplit[2]; //rest of response message string is actual text from other user.
+                        onMsgReceived(false, sender, msg);
+                    case "msgok":
+                        //TODO add action here?
+                        break;
+                    case "msgerror":
+                        lastError = message;
+                        onMsgError(message);
 
-            // TODO Step 8: add support for incoming supported command list (type: supported)
+                    default: // we don't know what happened.
+                        log("Unexpected command case: \n\t Server command: " + command + "\n\tServer message: " + message);
+                        break;
 
-        }
-    }
+                }// switch
+            }// if
+        }// while
+
+        // TODO Step 3: Implement this method
+        // Hint: Reuse waitServerResponse() method
+        // Hint: Have a switch-case (or other way) to check what type of response is received from the server
+        // and act on it.
+        // Hint: In Step 3 you need to handle only login-related responses.
+        // Hint: In Step 3 reuse onLoginResult() method
+
+        // TODO Step 5: update this method, handle user-list response from the server
+        // Hint: In Step 5 reuse onUserList() method
+
+        // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
+        // TODO Step 7: add support for incoming message errors (type: msgerr)
+        // TODO Step 7: add support for incoming command errors (type: cmderr)
+        // Hint for Step 7: call corresponding onXXX() methods which will notify all the listeners
+
+        // TODO Step 8: add support for incoming supported command list (type: supported)
+
+    } // parseIncomingCommands
 
     /**
      * Register a new listener for events (login result, incoming message, etc)
@@ -273,6 +330,9 @@ public class TCPClient {
      * Internet error)
      */
     private void onDisconnect() {
+        for (ChatListener l : listeners) {
+            l.onDisconnect();
+        }
         // TODO Step 4: Implement this method
         // Hint: all the onXXX() methods will be similar to onLoginResult()
     }
@@ -312,6 +372,9 @@ public class TCPClient {
      * @param errMsg Error message
      */
     private void onCmdError(String errMsg) {
+        for (ChatListener l : listeners) {
+            l.onCommandError(errMsg);
+        }
         // TODO Step 7: Implement this method
     }
 
