@@ -16,6 +16,14 @@ public class TCPClient {
     private final List<ChatListener> listeners = new LinkedList<>();
 
     /**
+     * Prints logMsg to console with formatting.
+     * @param logMesg String to print.
+     */
+    private void log(String logMesg) {
+        System.out.println("# Log Message: " + logMesg);
+    }
+
+    /**
      * Connect to a chat server.
      *
      * @param host host name or IP address of the chat server
@@ -23,10 +31,21 @@ public class TCPClient {
      * @return True on success, false otherwise
      */
     public boolean connect(String host, int port) {
+        try {
+            connection = new Socket(host, port);
+            connection.setKeepAlive(true);
+            toServer = new PrintWriter(connection.getOutputStream());
+            fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+
+            return true; // connection and writer/reader creation successful
+        } catch (IOException e) {
+            log("Exception: " + e.getMessage());
+            return false; // connection failed
+        }
         // TODO Step 1: implement this method
         // Hint: Remember to process all exceptions and return false on error
         // Hint: Remember to set up all the necessary input/output stream variables
-        return false;
+
     }
 
     /**
@@ -41,6 +60,14 @@ public class TCPClient {
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
         // Hint: remember to check if connection is active
+        if (connection.isConnected()) {
+            try {
+                connection.close();
+                connection = null; // really...?
+            } catch (IOException e) {
+                log(e.getMessage());
+            }
+        }
     }
 
     /**
