@@ -1,5 +1,7 @@
 package no.ntnu.datakomm.chat;
 
+import com.sun.xml.internal.bind.v2.TODO;
+
 import java.io.*;
 import java.net.*;
 import java.util.LinkedList;
@@ -34,7 +36,7 @@ public class TCPClient {
         try {
             connection = new Socket(host, port);
             connection.setKeepAlive(true);
-            toServer = new PrintWriter(connection.getOutputStream());
+            toServer = new PrintWriter(connection.getOutputStream(), true);
             fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 
             return true; // connection and writer/reader creation successful
@@ -59,11 +61,13 @@ public class TCPClient {
      */
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
+        // TODO onDisconnect
         // Hint: remember to check if connection is active
         if (connection.isConnected()) {
             try {
                 connection.close();
                 connection = null; // really...?
+               log("Connection closed.");
             } catch (IOException e) {
                 log(e.getMessage());
             }
@@ -74,7 +78,7 @@ public class TCPClient {
      * @return true if the connection is active (opened), false if not.
      */
     public boolean isConnectionActive() {
-        return connection != null;
+        return (connection != null && connection.isConnected());
     }
 
     /**
@@ -84,9 +88,18 @@ public class TCPClient {
      * @return true on success, false otherwise
      */
     private boolean sendCommand(String cmd) {
-        // TODO Step 2: Implement this method
-        // Hint: Remember to check if connection is active
-        return false;
+
+        if (isConnectionActive() && connection.isConnected()){
+            toServer.println(cmd);
+            return true;
+
+            // TODO Step 2: Implement this method
+            // Hint: Remember to check if connection is active
+        }
+        else {
+            log("Failed to send command. Is connection active?");
+            return false;
+        }
     }
 
     /**
@@ -96,10 +109,17 @@ public class TCPClient {
      * @return true if message sent, false on error
      */
     public boolean sendPublicMessage(String message) {
+        if (isConnectionActive()) {
+           return sendCommand("msg " + message);
+
+            // TODO catch server error messages
+        } else {
+            return false;
+        }
         // TODO Step 2: implement this method
+
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        return false;
     }
 
     /**
