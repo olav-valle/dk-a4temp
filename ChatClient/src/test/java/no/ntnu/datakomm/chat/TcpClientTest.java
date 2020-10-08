@@ -293,9 +293,9 @@ public class TcpClientTest {
         Thread.sleep(THREAD_SLEEP_TIME);
 
         // We should get all the users listed in a single message and it should contain all the three client names
+        assertTrue(supported.contains("login"));
         assertTrue(supported.contains("msg"));
         assertTrue(supported.contains("privmsg"));
-        assertTrue(supported.contains("login"));
         assertTrue(supported.contains("users"));
         assertTrue(supported.contains("help"));
 
