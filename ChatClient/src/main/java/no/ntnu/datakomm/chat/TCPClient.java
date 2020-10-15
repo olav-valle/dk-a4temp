@@ -60,6 +60,20 @@ public class TCPClient {
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
         // Hint: remember to check if connection is active
+        if (isConnectionActive()) {
+            System.out.println("Terminating connection...");
+            try {
+                //Close the socket and streams
+                toServer.close();
+                fromServer.close();
+                connection.close();
+            } catch (IOException e) {
+                lastError = e.getMessage();
+                System.out.println("Error while closing connection: " + lastError);
+            }
+        }
+        //Connection is closed
+        connection = null;
     }
 
     /**
@@ -295,6 +309,9 @@ public class TCPClient {
     private void onDisconnect() {
         // TODO Step 4: Implement this method
         // Hint: all the onXXX() methods will be similar to onLoginResult()
+        for (ChatListener l : listeners) {
+            l.onDisconnect();
+        }
     }
 
     /**
