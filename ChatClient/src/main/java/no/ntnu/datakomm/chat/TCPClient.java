@@ -1,23 +1,21 @@
 package no.ntnu.datakomm.chat;
 
-import com.sun.xml.internal.bind.v2.TODO;
-
 import java.io.*;
 import java.net.*;
 import java.util.LinkedList;
 import java.util.List;
 
 public class TCPClient {
-    private PrintWriter toServer;
-    private BufferedReader fromServer;
+    private PrintWriter toServerWriter;
+    private BufferedReader fromServerReader;
     private Socket connection;
+    private String serverIP;
 
 
     // Hint: if you want to store a message for the last error, store it here
     private String lastError = null;
 
     private final List<ChatListener> listeners = new LinkedList<>();
-    private String serverIP;
 
     /**
      * Prints logMsg to console with formatting: "# TCPClientLog: " + logMsg
@@ -38,8 +36,8 @@ public class TCPClient {
         try {
             connection = new Socket(host, port);
             connection.setKeepAlive(true);
-            toServer = new PrintWriter(connection.getOutputStream(), true);
-            fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            toServerWriter = new PrintWriter(connection.getOutputStream(), true);
+            fromServerReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             serverIP = connection.getInetAddress().toString();
             log("Connected to server: '" + serverIP + "' at port: " + port);
 
@@ -65,12 +63,11 @@ public class TCPClient {
      */
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
-        // TODO onDisconnect
         // Hint: remember to check if connection is active
-        if (connection != null && connection.isConnected()) {
+        if (isConnectionActive()) {
             try {
                 connection.close();
-                connection = null; // really...?
+                connection = null; // do we really have to do this?
                 onDisconnect(); // Notify listeners of event
                log("Connection closed.");
             } catch (IOException e) {
@@ -94,8 +91,8 @@ public class TCPClient {
      */
     private boolean sendCommand(String cmd) {
 
-        if (isConnectionActive() && connection.isConnected()){
-            toServer.println(cmd);
+        if (isConnectionActive()){
+            toServerWriter.println(cmd);
             return true;
 
             // TODO Step 2: Implement this method
@@ -117,7 +114,6 @@ public class TCPClient {
         if (isConnectionActive()) {
            return sendCommand("msg " + message);
 
-            // TODO catch server error messages
         } else {
             log("Error sending message. Is connection open?");
             return false;
@@ -155,8 +151,8 @@ public class TCPClient {
      */
     public void tryLogin(String username) {
 
-        if (isConnectionActive()) { // check username format is valid
-            sendCommand("login " + username); // trim to ensure no outside whitespace. Probably not needed?
+        if (isConnectionActive()) {
+            sendCommand("login " + username);
 
         } else if (!isConnectionActive()) {
             log("No connection active, cannot log in.");
@@ -202,13 +198,14 @@ public class TCPClient {
         String resp = null;
         if (isConnectionActive()) {
             try {
-               if (fromServer.ready()) resp = fromServer.readLine();
+               if (fromServerReader.ready())
+                   resp = fromServerReader.readLine();
             } catch (IOException e) {
                 log("Response Exception: " + e.getMessage());
+                log("Disconnecting socket due to server response error.");
                 this.disconnect();
             }
         }
-
     return resp;
         // TODO Step 3: Implement this method
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
@@ -233,9 +230,7 @@ public class TCPClient {
      */
     public void startListenThread() {
         // Call parseIncomingCommands() in the new thread.
-        Thread t = new Thread(() -> {
-            parseIncomingCommands();
-        });
+        Thread t = new Thread(this::parseIncomingCommands);
         t.start();
     }
 
@@ -247,16 +242,21 @@ public class TCPClient {
         while (isConnectionActive()) {
 
             String response = waitServerResponse();
+
             if (response != null) {
-                String[] respSplit = response.split(" ", 2); // split response into command and message parts
-                String command = respSplit[0]; // server response command is first word in response string
-                String message = (respSplit.length > 1) ? respSplit[1] : null; // null if response had no message
+
+                // split response into command and message parts
+                String[] respSplit = response.split(" ", 2);
+                // server response command is first word in response string
+                String command = respSplit[0];
+                // message is the remainder of the response, or null if response had no message
+                String message = (respSplit.length > 1) ? respSplit[1] : null;
 
                 switch (command) {
                     case "loginok":
                         onLoginResult(true, message); // message == null here, but signature demands it
-
                         break;
+
                     case "loginerr":
                         onLoginResult(false, message);
                         break;
@@ -272,15 +272,17 @@ public class TCPClient {
                         break;
 
                     case "msg":
-                        String[] msgAsArray = message.split(" ", 2);
-                        //String sender = msgAsArray[0]; //first word after command is sender username.
-                        //String msg = msgAsArray[1]; //rest of response message string is actual text from other user.
-                        onMsgReceived(false, msgAsArray[0], msgAsArray[1]);
+                        if (message != null) {
+                            String[] msgAsArray = message.split(" ", 2);
+                            onMsgReceived(false, msgAsArray[0], msgAsArray[1]);
+                        }
                         break;
 
                     case "privmsg":
-                        String[] privMsgAsArray = message.split(" ", 2);
-                        onMsgReceived(true, privMsgAsArray[0], privMsgAsArray[1] );
+                        if (message != null) {
+                            String[] privMsgAsArray = message.split(" ", 2);
+                            onMsgReceived(true, privMsgAsArray[0], privMsgAsArray[1] );
+                        }
                         break;
 
                     case "msgok":
@@ -288,13 +290,17 @@ public class TCPClient {
                         break;
 
                     case "users":
-                        String[] usersArray = message.split(" ");
-                        onUsersList(usersArray);
+                        if (message != null) {
+                            String[] usersArray = message.split(" ");
+                            onUsersList(usersArray);
+                        }
                         break;
 
                     case "supported":
-                        String[] supportedCmd = message.split(" ");
-                        onSupported(supportedCmd);
+                       if (message != null) {
+                           String[] supportedCmd = message.split(" ");
+                           onSupported(supportedCmd);
+                       }
                         break;
 
                     default: // we don't know what happened.
@@ -329,7 +335,7 @@ public class TCPClient {
     /**
      * Register a new listener for events (login result, incoming message, etc)
      *
-     * @param listener
+     * @param listener The ChatListener listener to register.
      */
     public void addListener(ChatListener listener) {
         if (!listeners.contains(listener)) {
@@ -340,7 +346,7 @@ public class TCPClient {
     /**
      * Unregister an event listener
      *
-     * @param listener
+     * @param listener The ChatListener listener to unregister.
      */
     public void removeListener(ChatListener listener) {
         listeners.remove(listener);
@@ -399,7 +405,7 @@ public class TCPClient {
     private void onMsgReceived(boolean priv, String sender, String text) {
         for (ChatListener l : listeners) {
             l.onMessageReceived(new TextMessage(sender, priv, text));
-        }
+        } // fixme: should this really be creating new TextMessage object? See class diagram in specification doc.
         // TODO Step 7: Implement this method
     }
 
