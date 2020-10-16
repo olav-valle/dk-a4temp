@@ -254,6 +254,30 @@ public class TCPClient {
                     case "users":
                         onUsersList(params.split(" "));
                         break;
+
+                    case "msg":
+                    case "privmsg":
+                        boolean priv = cmd.equals("primmsg");
+                        parts = params.split(" ", 2);
+                        if (parts.length == 2) {
+                            String sender = parts[0];
+                            String msg = parts[1];
+                            onMsgReceived(priv, sender, msg);
+                        }
+                        break;
+
+                    case "msgok":
+                        //Todo ???
+
+                    case "msgerr":
+                        onMsgError(params);
+                        break;
+
+                    case "cmderr":
+                        onCmdError(params);
+                        break;
+
+
                 }
 
             }
@@ -343,6 +367,10 @@ public class TCPClient {
      */
     private void onMsgReceived(boolean priv, String sender, String text) {
         // TODO Step 7: Implement this method
+        TextMessage msg = new TextMessage(sender, priv, text);
+        for (ChatListener l : listeners) {
+            l.onMessageReceived(msg);
+        }
     }
 
     /**
@@ -352,6 +380,10 @@ public class TCPClient {
      */
     private void onMsgError(String errMsg) {
         // TODO Step 7: Implement this method
+        for (ChatListener l : listeners) {
+            l.onMessageError(errMsg);
+        }
+
     }
 
     /**
@@ -361,6 +393,9 @@ public class TCPClient {
      */
     private void onCmdError(String errMsg) {
         // TODO Step 7: Implement this method
+        for (ChatListener l : listeners) {
+            l.onCommandError(errMsg);
+        }
     }
 
     /**
