@@ -67,7 +67,7 @@ public class TCPClient {
         if (isConnectionActive()) {
             try {
                 connection.close();
-                connection = null; // do we really have to do this?
+                connection = null;
                 onDisconnect(); // Notify listeners of event
                log("Connection closed.");
             } catch (IOException e) {
@@ -251,6 +251,7 @@ public class TCPClient {
                 String command = respSplit[0];
                 // message is the remainder of the response, or null if response had no message
                 String message = (respSplit.length > 1) ? respSplit[1] : null;
+                // could be set to empty string instead of null
 
                 switch (command) {
                     case "loginok":
