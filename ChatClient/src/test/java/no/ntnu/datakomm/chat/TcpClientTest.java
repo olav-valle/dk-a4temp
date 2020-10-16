@@ -11,7 +11,7 @@ import static org.junit.Assert.*;
 public class TcpClientTest {
     // Host and port to be used for all connection in the tests
     private static final String SERVER_HOST = "datakomm.work";
-    private static final int SERVER_PORT = 1310;
+    private static final int SERVER_PORT = 1300;
 
     // How many ms to sleep when waiting for server response to arrive
     private static final int THREAD_SLEEP_TIME = 2000;
@@ -293,9 +293,9 @@ public class TcpClientTest {
         Thread.sleep(THREAD_SLEEP_TIME);
 
         // We should get all the users listed in a single message and it should contain all the three client names
+        assertTrue(supported.contains("login"));
         assertTrue(supported.contains("msg"));
         assertTrue(supported.contains("privmsg"));
-        assertTrue(supported.contains("login"));
         assertTrue(supported.contains("users"));
         assertTrue(supported.contains("help"));
 
